@@ -1,0 +1,193 @@
+<!DOCTYPE html>
+<html lang="uk">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>IV3 SYSTEMS | OFFICIAL</title>
+    <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@500;700&family=Rajdhani:wght@500;700&display=swap" rel="stylesheet">
+    <script src="https://cdn.jsdelivr.net/npm/bcryptjs@2.4.3/dist/bcrypt.min.js"></script>
+    <style>
+        :root { 
+            --primary: #0033cc; 
+            --accent: #00e5ff;
+            --bg: #010103; 
+            --card: rgba(5, 10, 25, 0.95); 
+        }
+        * { box-sizing: border-box; margin: 0; padding: 0; }
+        body { 
+            background: var(--bg); 
+            background-image: radial-gradient(circle at center, #001a4d 0%, var(--bg) 80%);
+            color: #fff; font-family: 'Rajdhani', sans-serif; 
+            display: flex; justify-content: center; align-items: center; 
+            height: 100vh; overflow: hidden; 
+        }
+        .container { 
+            background: var(--card); padding: 40px; border-radius: 15px; 
+            border: 1px solid var(--primary); box-shadow: 0 0 40px rgba(0, 51, 204, 0.3); 
+            width: 380px; position: relative; text-align: center;
+        }
+        .lang-bar { position: absolute; top: 15px; right: 15px; display: flex; gap: 5px; }
+        .lang-btn { 
+            background: transparent; border: 1px solid var(--primary); color: #666; 
+            padding: 4px 8px; font-size: 10px; cursor: pointer; border-radius: 4px; transition: 0.3s; 
+        }
+        .lang-btn.active { color: var(--accent); border-color: var(--accent); box-shadow: 0 0 8px var(--accent); }
+
+        h1 { font-family: 'Orbitron'; font-size: 28px; margin-bottom: 25px; color: var(--accent); text-shadow: 0 0 10px var(--primary); letter-spacing: 2px; }
+        
+        #key-display { 
+            font-size: 36px; color: #fff; margin: 30px 0; 
+            text-shadow: 0 0 15px var(--accent); font-family: 'Orbitron'; min-height: 45px;
+        }
+
+        .btn { 
+            display: block; width: 100%; padding: 16px; margin: 10px 0; 
+            border: none; border-radius: 5px; font-family: 'Orbitron'; 
+            font-weight: bold; cursor: pointer; transition: 0.3s; 
+            text-decoration: none; font-size: 14px; text-transform: uppercase;
+        }
+        .get-btn { 
+            background: linear-gradient(90deg, var(--primary), #001133); 
+            color: white; border: 1px solid var(--accent);
+        }
+        .get-btn:hover { box-shadow: 0 0 20px var(--accent); transform: scale(1.02); }
+        
+        .check-btn { background: rgba(0, 229, 255, 0.1); border: 1px solid var(--primary); color: var(--accent); }
+        .check-btn:hover { background: var(--primary); color: white; }
+
+        input { 
+            width: 100%; padding: 14px; background: rgba(0,0,0,0.8); 
+            border: 1px solid var(--primary); color: white; border-radius: 5px; 
+            margin-bottom: 15px; outline: none; text-align: center; font-size: 16px;
+        }
+        #status-text { font-size: 12px; color: var(--primary); letter-spacing: 1px; }
+        #auth-res { margin-top: 15px; font-weight: bold; min-height: 20px; text-transform: uppercase; }
+        .hidden { display: none; }
+    </style>
+</head>
+<body>
+
+    <div class="container">
+        <div class="lang-bar">
+            <button class="lang-btn active" onclick="changeLang('uk')" id="ua-btn">UA</button>
+            <button class="lang-btn" onclick="changeLang('en')" id="en-btn">EN</button>
+            <button class="lang-btn" onclick="changeLang('ru')" id="ru-btn">RU</button>
+        </div>
+
+        <h1>IV3 SYSTEMS</h1>
+        
+        <div id="gen-section">
+            <p id="status-text">ПОТРІБНА АКТИВАЦІЯ</p>
+            <div id="key-display">---</div>
+            <a href="https://direct-link.net/3269428/4JDO3eiqNWmf" id="ad-link" class="btn get-btn" onclick="startAd()">ОТРИМАТИ КЛЮЧ</a>
+        </div>
+
+        <div id="auth-section" style="margin-top: 30px; border-top: 1px solid rgba(0,229,255,0.2); padding-top: 20px;">
+            <input type="text" id="user-input" placeholder="ВВЕДІТЬ КЛЮЧ">
+            <button class="btn check-btn" id="login-btn" onclick="verifyKey()">УВІЙТИ</button>
+            <div id="auth-res"></div>
+        </div>
+    </div>
+
+    <script>
+        // ДАНІ ТВОЄЇ БАЗИ
+        const UPSTASH_URL = "https://ruling-locust-104275.upstash.io";
+        const UPSTASH_TOKEN = "gQAAAAAAAZdTAAIgcDIxNTMxMTdhZGU3OWE0ODMxOGI3YWEyNDNhZGY1ZjdjZA";
+        
+        // ТВІЙ НАДІЙНИЙ BCrypt ХЕШ
+        const ADMIN_HASH = "$2b$10$3WLaXY2QTRbe1NrWlQ5ZbOiit38gdUqnLsaCJUIBw9vaEz4KdacHO";
+
+        const translations = {
+            uk: { status: "ПОТРІБНА АКТИВАЦІЯ", get: "ОТРИМАТИ КЛЮЧ", current: "ВАШ КЛЮЧ:", placeholder: "ВВЕДІТЬ КЛЮЧ", login: "УВІЙТИ", wait: "ПЕРЕВІРКА...", success: "ДОСТУП НАДАНО!", fail: "НЕВІРНИЙ КЛЮЧ", active: "КЛЮЧ АКТИВНИЙ" },
+            en: { status: "ACTIVATION REQUIRED", get: "GET KEY", current: "YOUR KEY:", placeholder: "ENTER KEY", login: "LOGIN", wait: "CHECKING...", success: "ACCESS GRANTED!", fail: "INVALID KEY", active: "KEY ACTIVE" },
+            ru: { status: "НУЖНА АКТИВАЦИЯ", get: "ПОЛУЧИТЬ КЛЮЧ", current: "ВАШ КЛЮЧ:", placeholder: "ВВЕДИТЕ КЛЮЧ", login: "ВОЙТИ", wait: "ПРОВЕРКА...", success: "ДОСТУП РАЗРЕШЕН!", fail: "НЕВЕРНЫЙ КЛЮЧ", active: "КЛЮЧ АКТИВЕН" }
+        };
+
+        let currentLang = localStorage.getItem('iv3_lang') || 'uk';
+
+        function changeLang(lang) {
+            currentLang = lang;
+            localStorage.setItem('iv3_lang', lang);
+            updateUI();
+        }
+
+        function updateUI() {
+            const t = translations[currentLang];
+            document.getElementById('status-text').innerText = t.status;
+            document.getElementById('ad-link').innerText = t.get;
+            document.getElementById('user-input').placeholder = t.placeholder;
+            document.getElementById('login-btn').innerText = t.login;
+            document.querySelectorAll('.lang-btn').forEach(b => b.classList.remove('active'));
+            document.getElementById(currentLang === 'uk' ? 'ua-btn' : currentLang + '-btn').classList.add('active');
+            
+            if(localStorage.getItem('iv3_saved_key')) {
+                document.getElementById('status-text').innerText = t.current;
+                document.getElementById('ad-link').innerText = t.active;
+            }
+        }
+
+        function getFP() {
+            return btoa(`${window.screen.width}${window.screen.height}${navigator.language}`).substr(0, 12);
+        }
+
+        function startAd() {
+            localStorage.setItem('iv3_ad_clicked', Date.now());
+        }
+
+        async function init() {
+            const fp = getFP();
+            const savedKey = localStorage.getItem('iv3_saved_key');
+            const adTime = localStorage.getItem('iv3_ad_clicked');
+            const display = document.getElementById('key-display');
+            const btn = document.getElementById('ad-link');
+
+            updateUI();
+
+            // Авто-генерація після реклами (мінімум 12 сек очікування)
+            if (adTime && (Date.now() - adTime > 12000) && !savedKey) {
+                display.innerText = "IV3-GEN...";
+                const newKey = "IV3-" + Math.random().toString(36).substr(2, 7).toUpperCase();
+                try {
+                    await fetch(`${UPSTASH_URL}/set/${newKey}/active/EX/72000`, { headers: { Authorization: `Bearer ${UPSTASH_TOKEN}` } });
+                    await fetch(`${UPSTASH_URL}/set/fp_${fp}/${newKey}/EX/72000`, { headers: { Authorization: `Bearer ${UPSTASH_TOKEN}` } });
+                    localStorage.setItem('iv3_saved_key', newKey);
+                    display.innerText = newKey;
+                    updateUI();
+                } catch(e) { display.innerText = "DB ERROR"; }
+            } else if (savedKey) {
+                display.innerText = savedKey;
+                btn.classList.add('hidden');
+            }
+        }
+
+        async function verifyKey() {
+            const input = document.getElementById('user-input').value.trim();
+            const resText = document.getElementById('auth-res');
+            if(!input) return;
+
+            // ПЕРЕВІРКА АДМІНА ЧЕРЕЗ BCRYPT
+            if (dcodeIO.bcrypt.compareSync(input, ADMIN_HASH)) {
+                alert("Welcome Admin | IV3 Systems"); 
+                return;
+            }
+
+            resText.innerText = translations[currentLang].wait;
+            resText.style.color = "#00e5ff";
+
+            try {
+                const r = await fetch(`${UPSTASH_URL}/get/${input}`, { headers: { Authorization: `Bearer ${UPSTASH_TOKEN}` } });
+                const data = await r.json();
+                if (data.result === "active") {
+                    resText.innerText = translations[currentLang].success;
+                    resText.style.color = "#00ffcc";
+                } else {
+                    resText.innerText = translations[currentLang].fail;
+                    resText.style.color = "#ff4444";
+                }
+            } catch(e) { resText.innerText = "ERROR"; }
+        }
+
+        init();
+    </script>
+</body>
+</html>
